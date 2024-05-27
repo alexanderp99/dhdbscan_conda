@@ -1,0 +1,3 @@
+[submodule "hdbscan"]
+	path = hdbscan
+	url = https://github.com/alexanderp99/hdbscan.git
