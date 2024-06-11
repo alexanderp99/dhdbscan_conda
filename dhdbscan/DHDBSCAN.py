@@ -1,6 +1,7 @@
 import scipy.linalg
 from sklearn.metrics import pairwise_distances
 import numpy as np
+from itertools import groupby, tee
 
 import scipy as sp
 
@@ -49,7 +50,46 @@ def sort_deterministically(arr):
 
 import numpy as np
 
+
 class UnionFind:
+    """Source: https://yuminlee2.medium.com/union-find-algorithm-ffa9cd7d2dba"""
+    def __init__(self, numOfElements):
+        numOfElements += 5 # index error
+        self.parent = self.makeSet(numOfElements)
+        self.size = [1] * numOfElements
+        self.count = numOfElements
+
+    def makeSet(self, numOfElements):
+        return [x for x in range(numOfElements)]
+
+    # Time: O(logn) | Space: O(1)
+    def find(self, node):
+        while node != self.parent[node]:
+            # path compression
+            self.parent[node] = self.parent[self.parent[node]]
+            node = self.parent[node]
+        return node
+
+    # Time: O(1) | Space: O(1)
+    def union(self, node1, node2):
+        root1 = self.find(node1)
+        root2 = self.find(node2)
+
+        # already in the same set
+        if root1 == root2:
+            return
+
+        if self.size[root1] > self.size[root2]:
+            self.parent[root2] = root1
+            self.size[root1] += 1
+        else:
+            self.parent[root1] = root2
+            self.size[root2] += 1
+
+        self.count -= 1
+
+
+class UnionFindOld:
     def __init__(self, N):
         self.parent_arr = -1 * np.ones(2 * N - 1, dtype=int)
         self.next_label = N
@@ -72,7 +112,7 @@ class UnionFind:
         return n
 
 
-def label_(L):
+def label__(L):
     result_arr = np.zeros((L.shape[0], 4))
     N = L.shape[0] + 1
     U = UnionFind(N)
@@ -82,20 +122,158 @@ def label_(L):
         b = int(L[index, 1])
         delta = L[index, 2]
 
-        aa = U.fast_find(a)
-        bb = U.fast_find(b)
+        aa = U.find(a)
+        bb = U.find(b)
 
-        result_arr[index, 0] = aa
-        result_arr[index, 1] = bb
+        result_arr[index, 0] = a
+        result_arr[index, 1] = b
         result_arr[index, 2] = delta
-        result_arr[index, 3] = U.size_arr[aa] + U.size_arr[bb]
+        result_arr[index, 3] = U.size[aa] + U.size[bb]
 
 
         U.union(aa, bb)
 
     return result_arr
 
+def label_hdbscan(L: np.ndarray) -> np.ndarray:
+    result_arr = np.zeros((L.shape[0], L.shape[1] + 1))
+    result = result_arr[:, :4]
+    N = L.shape[0] + 1
+    U = UnionFind(N)
 
+    for index in range(L.shape[0]):
+        a = int(L[index, 0])
+        b = int(L[index, 1])
+        delta = L[index, 2]
+
+        aa, bb = U.fast_find(a), U.fast_find(b)
+
+        result[index, 0] = aa
+        result[index, 1] = bb
+        result[index, 2] = delta
+        result[index, 3] = U.size[aa] + U.size[bb]
+
+        U.union(aa, bb)
+
+    return result_arr
+
+def label_(L):
+    result_arr = np.zeros((L.shape[0], 4))
+    N = L.shape[0] + 1
+    U = UnionFind(N)
+
+    index = 0
+    for delta, group in groupby(L, key=lambda x: x[2]):
+
+        group1, group2 = tee(group)
+
+        group2 = list(group2)
+        # Calculate the number of elements in the group by exhausting group1
+        group_size = sum(1 for _ in group1)
+        if group_size > 1:
+            index_items = np.array(group2)[:,:2].flatten()
+            items_have_shared_components = (len(np.unique(index_items)) != len(index_items))
+            unique_elements, unique_counts = np.unique(index_items, return_counts=True)
+
+            #next check
+            duplicate_element = unique_elements[unique_counts > 1]
+            non_duplicate_elements = unique_elements[unique_counts == 1]
+            if len(duplicate_element) > 1:
+                print("exeption. Can not handle multiple duplicates")
+            #duplicate_element = int(duplicate_element)
+
+            union_find_values = []
+            all_non_duplicates_not_in_same_cluster = True
+            for each_value in unique_elements:
+                union_find_value = U.find(int(each_value))
+                if union_find_value in union_find_values:
+                    all_non_duplicates_not_in_same_cluster = False
+                    break
+                else:
+                    union_find_values.append(union_find_value)
+
+
+            if not items_have_shared_components and all_non_duplicates_not_in_same_cluster:
+                for item in group2:
+                    a = int(item[0])
+                    b = int(item[1])
+                    delta = item[2]
+
+                    aa = U.find(a)
+                    bb = U.find(b)
+
+                    result_arr[index, 0] = aa
+                    result_arr[index, 1] = bb
+                    result_arr[index, 2] = delta
+                    result_arr[index, 3] = U.size[aa] + U.size[bb]
+
+                    U.union(aa, bb)
+
+                    index += 1
+            else:
+                print("attention, we have a conflict")
+
+                first_merge_num_childs = None# This guarantees, that other connected components that connect to the same component on the same level, have the same number of children (split condition)
+
+                for idx, item in enumerate(group2):
+                    a = int(item[0])
+                    b = int(item[1])
+                    delta = item[2]
+
+                    aa = U.find(a)
+                    bb = U.find(b)
+
+                    result_arr[index, 0] = aa
+                    result_arr[index, 1] = bb
+                    result_arr[index, 2] = delta
+
+                    if first_merge_num_childs is None:
+                        first_merge_num_childs = U.size[aa] + U.size[bb]
+                    result_arr[index, 3] = first_merge_num_childs
+
+                    U.union(aa, bb)
+
+                    index += 1
+
+                """expanded_group = None  # Start with an empty placeholder for the array
+
+                for idx, row in enumerate(group2):
+                    a_size = U.size[U.find(int(row[0]))]
+                    b_size = U.size[U.find(int(row[1]))]
+
+                    # Create a new row that includes the additional size sum
+                    new_row = np.append(row, a_size + b_size)
+
+                    # Stack the new row onto the expanded_group array
+                    if expanded_group is None:
+                        expanded_group = new_row.reshape(1, -1)  # Initialize the array with the first row shaped correctly
+                    else:
+                        expanded_group = np.vstack((expanded_group, new_row.reshape(1, -1)))
+
+                # Sort expanded_group by the third column, which is 'delta' originally
+                sorted_size = list(expanded_group[np.argsort(expanded_group[:, 2])])
+                group2 = sorted_size"""
+
+        else:
+            for item in group2:
+                a = int(item[0])
+                b = int(item[1])
+                delta = item[2]
+
+                aa = U.find(a)
+                bb = U.find(b)
+
+                result_arr[index, 0] = aa
+                result_arr[index, 1] = bb
+                result_arr[index, 2] = delta
+                result_arr[index, 3] = U.size[aa] + U.size[bb]
+
+
+                U.union(aa, bb)
+
+                index += 1
+
+    return result_arr
 
 class DHDBSCAN:
     def __init__(self):
@@ -175,6 +353,8 @@ class DHDBSCAN:
         # np.fill_diagonal explicitly sets the diagonal and works in-place
         np.fill_diagonal(symmetric_m, np.diagonal(matrix))
 
+        "other idea: np.maximum(matrix,matrix.T)"
+
         return symmetric_m
 
     def check_for_determinism(self, input):
@@ -212,7 +392,7 @@ class DHDBSCAN:
         self.check_for_determinism(self.minimum_spanning_tree)
 
         ## Version 1. Custom implementation
-        self.single_linkage_tree = label_(self.minimum_spanning_tree)
+        self.single_linkage_tree = self.label(self.minimum_spanning_tree)
         ## Version 2. C++ implementation
         #self.single_linkage_tree = self.label(self.minimum_spanning_tree)
         #all(np.equal(self.label(self.minimum_spanning_tree)[:,3],label_(self.minimum_spanning_tree)[:,3]))
@@ -222,9 +402,11 @@ class DHDBSCAN:
 
         #label_(np.array([[1, 2, 0.1], [4, 3, 0.2], [4, 1, 0.4]]))
 
+        #condense_tree_custom(label__(label_(np.array([[1,2,0.1],[2,3,0.2],[4,3,0.2],[4,5,0.3]]))))
+
         #not deterministic:
-        # self.label(np.array([[1,2,0.1],[4,3,0.2],[2,3,0.2],[4,5,0.3]]))
-        # self.label(np.array([[1,2,0.1],[2,3,0.2],[4,3,0.2],[4,5,0.3]]))
+        label_(np.array([[1,2,0.1],[4,3,0.2],[2,3,0.2],[4,5,0.3]]))
+        label_(np.array([[1,2,0.1],[2,3,0.2],[4,3,0.2],[4,5,0.3]]))
 
         ## label_(np.array([[1,2,0.1],[4,3,0.2],[2,3,0.2],[4,5,0.3]]))
         ## label_(np.array([[1,2,0.1],[2,3,0.2],[4,3,0.2],[4,5,0.3]]))
@@ -234,7 +416,8 @@ class DHDBSCAN:
         self.condensed_tree = condense_tree(self.single_linkage_tree, self.min_cluster_size)
 
 
-        self.stability_dict = compute_stability(self.condensed_tree)
+        """self.stability_dict = compute_stability(self.condensed_tree)
+
         self.labels_, self.probabilities, self.stabilities = get_clusters(
             self.condensed_tree,
             self.stability_dict,
@@ -243,8 +426,76 @@ class DHDBSCAN:
             False,
             0.0,
             0,
-        )
+        )"""
         return self
+
+    def fit_with_shuffled_mst(self,X ):
+        "Test that if mst is shuffled, the result is different"
+
+        self.distance_matrix = pairwise_distances(X, metric=self.metric)
+
+        self.mutual_reachability = self.calculate_mutual_reachability(self.distance_matrix, self.min_samples,
+                                                                      self.alpha)
+        self.mutual_reachability = self.make_symmetric(self.mutual_reachability)
+
+        self.minimum_spanning_tree = self.construct_minimum_spanning_tree(self.mutual_reachability)
+        self.minimum_spanning_tree = self.mst_linkage_core(self.mutual_reachability)
+        self.minimum_spanning_tree = self.minimum_spanning_tree[np.argsort(self.minimum_spanning_tree.T[2]), :]
+        # self.minimum_spanning_tree = sort_deterministically(self.minimum_spanning_tree)
+
+        self.minimum_spanning_tree = self._shuffle_mst(self.minimum_spanning_tree)
+
+        self.check_for_determinism(self.minimum_spanning_tree)
+
+        ## Version 1. Custom implementation
+        self.single_linkage_tree = label_(self.minimum_spanning_tree)
+        ## Version 2. C++ implementation
+        # self.single_linkage_tree = self.label(self.minimum_spanning_tree)
+        # all(np.equal(self.label(self.minimum_spanning_tree)[:,3],label_(self.minimum_spanning_tree)[:,3]))
+
+        # self.label(np.array([[1,2,0.1],[2,3,0.2],[3,4,0.3]]))
+
+        # label_(np.array([[1, 2, 0.1], [4, 3, 0.2], [4, 1, 0.4]]))
+
+        #condense_tree_custom(label__(label_(np.array([[1, 2, 0.1], [2, 3, 0.2], [4, 3, 0.2], [4, 5, 0.3]]))))
+
+        # not deterministic:
+        label_(np.array([[1, 2, 0.1], [4, 3, 0.2], [2, 3, 0.2], [4, 5, 0.3]]))
+        label_(np.array([[1, 2, 0.1], [2, 3, 0.2], [4, 3, 0.2], [4, 5, 0.3]]))
+
+        ## label_(np.array([[1,2,0.1],[4,3,0.2],[2,3,0.2],[4,5,0.3]]))
+        ## label_(np.array([[1,2,0.1],[2,3,0.2],[4,3,0.2],[4,5,0.3]]))
+
+        self.category_dict = self.count_categories(self.single_linkage_tree)
+
+        self.condensed_tree = condense_tree(self.single_linkage_tree, self.min_cluster_size)
+
+        """self.stability_dict = compute_stability(self.condensed_tree)
+
+        self.labels_, self.probabilities, self.stabilities = get_clusters(
+            self.condensed_tree,
+            self.stability_dict,
+            'eom',
+            False,
+            False,
+            0.0,
+            0,
+        )"""
+        return self
+
+    def _shuffle_mst(self, linkage_matrix: np.ndarray) -> np.ndarray:
+        unique_values = np.unique(linkage_matrix[:, 2])
+        shuffled_matrix = linkage_matrix.copy()
+
+        for value in unique_values:
+            indices = np.where(linkage_matrix[:, 2] == value)[0]
+            if len(indices) > 1:
+                shuffled_indices = indices.copy()
+                np.random.shuffle(shuffled_indices)
+                shuffled_matrix[shuffled_indices] = linkage_matrix[indices]
+
+        return shuffled_matrix
+
 
     def label(self, minimum_spanning_tree):
         return label(minimum_spanning_tree)
@@ -319,3 +570,6 @@ class DHDBSCAN:
             current_node = new_node
 
         return result
+
+    def fit_injected_mst(self, mst):
+        pass
