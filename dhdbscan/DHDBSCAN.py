@@ -277,6 +277,14 @@ def label_(L):
 
 class DHDBSCAN:
     def __init__(self):
+        self.single_linkage_tree = None
+        self.minimum_spanning_tree = None
+        self.stabilities = None
+        self.probabilities = None
+        self.labels_ = None
+        self.stability_dict = None
+        self.category_dict = None
+        self.condensed_tree = None
         self.distance_matrix = None
         self.metric = "euclidean"
         self.p = 2
@@ -377,6 +385,29 @@ class DHDBSCAN:
     def count_categories(self, linkage_tree):
         unique_items, counts = np.unique(linkage_tree[:, 3], return_counts=True)
         return dict(zip(unique_items, counts))
+
+    def fit_mst(self, X):
+
+        self.minimum_spanning_tree = X
+
+        self.single_linkage_tree = self.label(self.minimum_spanning_tree)
+
+        self.category_dict = self.count_categories(self.single_linkage_tree)
+
+        self.condensed_tree = condense_tree(self.single_linkage_tree, self.min_cluster_size)
+
+        self.stability_dict = compute_stability(self.condensed_tree)
+
+        self.labels_, self.probabilities, self.stabilities = get_clusters(
+            self.condensed_tree,
+            self.stability_dict,
+            'eom',
+            False,
+            False,
+            0.0,
+            0,
+        )
+        return self
 
     def fit(self, X, y=None):
         self.distance_matrix = pairwise_distances(X, metric=self.metric)

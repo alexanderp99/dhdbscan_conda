@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import groupby, tee
+from dhdbscan.DHDBSCAN import DHDBSCAN
 
 
 class Node:
@@ -63,6 +64,11 @@ class Cluster:
         child.parent = self
         self.children.append(child)
 
+    def __str__(self):
+        return f"Cluster: {self.values}"
+
+    def __repr__(self):
+        return f"Cluster: {self.values}"
 
 class Tree:
     def __init__(self):
@@ -327,9 +333,22 @@ class Tree:
 
 
         dfs(root_cluster)
+        return
 
-        def stability(node):
-            pass
+    def extractClusters(self, cluster_root):
+
+        cluster_list = []
+
+        def dfs(node):
+
+            for each_child_node in node.children:
+                if each_child_node.is_selected:
+                    cluster_list.append(each_child_node)
+                dfs(each_child_node)
+
+        dfs(cluster_root)
+
+        return cluster_list
 
 
 class UnionFind:
@@ -377,4 +396,27 @@ tree.print_cluster_tree(cluster)
 tree.calculate_stabilities(cluster)
 print("\n\n\n")
 tree.print_cluster_tree(cluster)
+cluster_list = tree.extractClusters(cluster)
+print(cluster_list)
+dict = {}
+for idx,each_cluster in enumerate(cluster_list):
+    dict[idx] = each_cluster.values
+print(dict)
+
+
+DHDBSCAN.fit_mst(data)
+
+
+"""
+- korrekte label wie bei HDBSCAN
+
+-Datasets aus dem HDBSCAN paper
+-Handgemachte Beispiele (auf Grid, oder grid(100x100 punkte))
+-Datengenerator
+
+-Daten
+-3 Ergebnisse (Verschiedene Algorithmen)
+-'mein' Ergebnis ist das korrekte
+
+"""
 
