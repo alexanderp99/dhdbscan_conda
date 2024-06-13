@@ -1,3 +1,6 @@
 [submodule "hdbscan"]
 	path = hdbscan
 	url = https://github.com/alexanderp99/hdbscan.git
+[submodule "DENSIRED"]
+	path = DENSIRED
+	url = https://github.com/PhilJahn/DENSIRED.git

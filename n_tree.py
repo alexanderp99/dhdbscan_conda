@@ -1,6 +1,5 @@
 import numpy as np
 from itertools import groupby, tee
-from dhdbscan.DHDBSCAN import DHDBSCAN
 
 
 class Node:
@@ -70,15 +69,16 @@ class Cluster:
     def __repr__(self):
         return f"Cluster: {self.values}"
 
+
 class Tree:
     def __init__(self):
         self.root = None
         self.minimum_cluster_size = 2
 
     def build_from_linkage_matrix(self, L: np.ndarray):
-        N = L.shape[0] + 2
+        N = L.shape[0]
         U = UnionFind(N)
-        nodes = {i: Node(i, np.infty) for i in range(N)}
+        nodes = {i: Node(i, np.infty) for i in range(L.shape[0])}
 
         last_node_idx = None
 
@@ -106,12 +106,15 @@ class Tree:
         self.root = nodes[last_node_idx]
 
     def build_from_linkage_matrix2(self, L):
-        N = L.shape[0] + 2
+        N = L.shape[0] + 2# +2
         U = UnionFind(N)
 
+        #num_datapoints = max(max(L[:,:1]),max(L[:,1:2])) +1 # #+1 because points start at 0
         nodes = {i: Node(i, np.infty) for i in range(N)}
+        #nodes = {index: Node(index, np.inf, L[index, 0], L[index, 1]) for index in range(len(L))}
         last_node_idx = None
         index = 0
+
 
         for delta, group in groupby(L, key=lambda x: x[2]):
 
@@ -164,7 +167,7 @@ class Tree:
 
                         index += 1
                 else:
-                    print("attention, we have a conflict")
+                    #print("attention, we have a conflict")
 
                     first_merge_num_childs = None  # This guarantees, that other connected components that connect to the same component on the same level, have the same number of children (split condition)
 
@@ -187,7 +190,9 @@ class Tree:
                     index += 1
                     """
 
-                    new_node = Node(-1, distance=delta, size=U.size[aa] + U.size[bb] + 1)  # +1 for C Node
+                    #new_node = Node(-1, distance=delta, size=U.size[aa] + U.size[bb] + 1)  # +1 for C Node
+                    new_node = Node(-1, distance=delta, size=U.size[aa] + U.size[bb] + U.size[cc]) # Root node was all children
+
                     new_node.add_child(nodes[aa])
                     new_node.add_child(nodes[bb])
                     new_node.add_child(nodes[cc])
@@ -274,7 +279,7 @@ class Tree:
         # Setting the cluster leaf delta
         def dfs(node):
 
-            if len(node.children) == 2 and all(child.value >= 0 for child in node.children):
+            if all(child.value >= 0 for child in node.children) and len(node.children) == 2:
                 node.stability = 1
             else:
                 for each_child_node in node.children:
@@ -325,12 +330,11 @@ class Tree:
                     for each_child_node in node.children:
                         stabilities.append(each_child_node.stability)
                 if np.sum(stabilities) > node.stability:
-                    node.stability = np.sum(stabilities) # Parent stabilites set to child stabilities
+                    node.stability = np.sum(stabilities)  # Parent stabilites set to child stabilities
                 else:
                     node.is_selected = True
                     for each_child_node in node.children:
                         each_child_node.is_selected = False
-
 
         dfs(root_cluster)
         return
@@ -379,44 +383,29 @@ class UnionFind:
                 self.size[root_u] += self.size[root_v]
 
 
-# Example usage:
-data = np.array(
-    [[4, 7, 0.001], [7, 8, 0.002], [7, 9, 0.003], [7, 10, 0.004], [11, 12, 0.005], [11, 13, 0.005], [11, 14, 0.005],
-     [11, 9, 0.006], [1, 2, 0.1], [4, 3, 0.2], [2, 3, 0.25], [4, 5, 0.3], [5, 6, 0.4]])
-tree = Tree()
-node = tree.build_from_linkage_matrix2(data)
-tree.print_tree(node)
-tree.condense_tree(node)
-print("\n\n\n")
-tree.extract_stable_clusters(node)
-tree.print_tree(node)
-cluster = tree.calculate_clusters(node)
-print("\n\n\n")
-tree.print_cluster_tree(cluster)
-tree.calculate_stabilities(cluster)
-print("\n\n\n")
-tree.print_cluster_tree(cluster)
-cluster_list = tree.extractClusters(cluster)
-print(cluster_list)
-dict = {}
-for idx,each_cluster in enumerate(cluster_list):
-    dict[idx] = each_cluster.values
-print(dict)
+def run_dhdbscan_from_mst(mst):
 
+    do_printing = True
 
-DHDBSCAN.fit_mst(data)
-
-
-"""
-- korrekte label wie bei HDBSCAN
-
--Datasets aus dem HDBSCAN paper
--Handgemachte Beispiele (auf Grid, oder grid(100x100 punkte))
--Datengenerator
-
--Daten
--3 Ergebnisse (Verschiedene Algorithmen)
--'mein' Ergebnis ist das korrekte
-
-"""
+    tree = Tree()
+    node = tree.build_from_linkage_matrix2(mst)
+    if do_printing:
+        tree.print_tree(node)
+        print("\n\n\n")
+    tree.condense_tree(node)
+    #tree.extract_stable_clusters(node)
+    if do_printing:
+        tree.print_tree(node)
+        print("\n\n\n")
+    cluster = tree.calculate_clusters(node)
+    if do_printing:
+        tree.print_cluster_tree(cluster)
+        print("\n\n\n")
+    tree.calculate_stabilities(cluster)
+    if do_printing:
+        tree.print_cluster_tree(cluster)
+    cluster_list = tree.extractClusters(cluster)
+    if do_printing:
+        print(cluster_list)
+    return cluster_list
 

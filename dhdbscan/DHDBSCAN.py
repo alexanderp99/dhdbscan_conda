@@ -22,6 +22,8 @@ from hdbscan._hdbscan_tree import (
 from hdbscan._hdbscan_reachability import mutual_reachability, sparse_mutual_reachability
 
 import numpy as np
+from n_tree import run_dhdbscan_from_mst
+
 
 def sort_deterministically(arr):
     # Find the unique values in the third column and their start indices
@@ -276,7 +278,8 @@ def label_(L):
     return result_arr
 
 class DHDBSCAN:
-    def __init__(self):
+    def __init__(self, min_points=15):
+        self.mutual_reachability = None
         self.single_linkage_tree = None
         self.minimum_spanning_tree = None
         self.stabilities = None
@@ -288,9 +291,9 @@ class DHDBSCAN:
         self.distance_matrix = None
         self.metric = "euclidean"
         self.p = 2
-        self.min_samples = 15
+        self.min_samples = min_points
         self.alpha = 1
-        self.min_cluster_size = 15
+        self.min_cluster_size = min_points
         return
 
     def fit_deterministic(self, X, y=None):
@@ -298,7 +301,7 @@ class DHDBSCAN:
 
     def construct_minimum_spanning_tree(self, X):
         # Convert input matrix to high precision
-        X = np.array(X, dtype=np.float128) if hasattr(np, 'float128') else np.array(X, dtype=np.float64)
+        #X = np.array(X, dtype=np.float128) if hasattr(np, 'float128') else np.array(X, dtype=np.float64)
 
         if X.shape[0] != X.shape[1]:
             raise ValueError("X needs to be square matrix of edge weights")
@@ -409,6 +412,17 @@ class DHDBSCAN:
         )
         return self
 
+    def fit_dhdbscan(self, X):
+        self.distance_matrix = pairwise_distances(X, metric=self.metric)
+        mutual_reachability = self.calculate_mutual_reachability(self.distance_matrix, self.min_samples,
+                                                                      self.alpha)
+        self.mutual_reachability = self.make_symmetric(mutual_reachability)
+        minimum_spanning_tree = self.mst_linkage_core(self.mutual_reachability)
+        self.minimum_spanning_tree = minimum_spanning_tree[np.argsort(minimum_spanning_tree.T[2]), :] #sorted ascending
+        clusters = run_dhdbscan_from_mst(self.minimum_spanning_tree)
+        return clusters
+
+        
     def fit(self, X, y=None):
         self.distance_matrix = pairwise_distances(X, metric=self.metric)
 
@@ -604,3 +618,7 @@ class DHDBSCAN:
 
     def fit_injected_mst(self, mst):
         pass
+
+
+    #3,5,6,
+    #

@@ -8,8 +8,8 @@ import sys
 # from hdbscan.hdbscan_ import HDBSCAN
 from sklearn.base import BaseEstimator, ClusterMixin
 
-from hdbscan import HDBSCAN
 from dhdbscan.DHDBSCAN import DHDBSCAN
+from hdbscan import HDBSCAN
 
 big_dataset = np.load('clusterable_data.npy')
 
@@ -57,6 +57,7 @@ class HDBSCAN_Experimentor:
                                 gen_min_span_tree=True, algorithm="generic", metric="euclidean").fit(shuffled_data)"""
             ## Scenario 2:
             clusterer = DHDBSCAN().fit(shuffled_data)
+
 
             if type(clusterer).__name__ == "DHDBSCAN":
                 msts.append(clusterer.minimum_spanning_tree)
