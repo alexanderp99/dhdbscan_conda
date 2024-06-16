@@ -103,7 +103,7 @@ class HDBSCAN_Experimentor:
 
     def test_determinism_shuffeling_mst(data, n=2):
         initial_sorted_sizes = None
-        np.random.seed(43)
+        np.random.seed(42)
         msts = []
         mutual_reachabilities = []
         categories = []

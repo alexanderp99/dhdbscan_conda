@@ -10,6 +10,10 @@ from sklearn.manifold import TSNE
 def generate_custom():
     return np.array([5, 4.7, 4.5, 4.4, 0, 0.1, 0.2, 0.3, -5, -4.8, -4.7, -4.6]).reshape(-1, 1), np.array([5.1, 5.2, 5.3, 5.45, 0.5, 0.4, 0.7, 0.2, -5.1, -5.2, - 5.3,- 5.4]).reshape(-1, 1)
 
+def generate_custom2():
+    return np.array([5, 4.7, 4.5, 4.4, 0, 0.1, 0.2, 0.3, -5, -4.8, -4.7, -4.6,10, 10.1, 10.2]).reshape(-1, 1), np.array([5.1, 5.2, 5.3, 5.45, 0.5, 0.4, 0.7, 0.2, -5.1, -5.2, - 5.3,- 5.4, 10,10.1, 10.2]).reshape(-1, 1)
+
+
 def generate_custom_bug():
     "when we run this we get a bug. Reason maybe: identical distances"
     return np.array([5, 4.7, 4.5, 4.4, 0, 0.1, 0.2, 0.3, -5, -4.8, -4.7, -4.6]).reshape(-1, 1), np.array([5, 5, 5, 5, 0, 0, 0, 0, -5, -5, - 5,- 5]).reshape(-1, 1)
@@ -39,8 +43,8 @@ def generate_two_moons():
     random_seed = 54
     np.random.seed(random_seed)
     random.seed(random_seed)
-    moons, _ = data.make_moons(n_samples=40, noise=0.05)
-    blobs, _ = data.make_blobs(n_samples=40, centers=[(-0.75, 2.25), (1.0, 2.0)], cluster_std=0.25)
+    moons, _ = data.make_moons(n_samples=43, noise=0.01)
+    blobs, _ = data.make_blobs(n_samples=0, centers=[(-0.75, 2.25), (1.0, 2.0)], cluster_std=0.1)
     test_data = np.vstack([moons, blobs])
     # plt.scatter(test_data.T[0], test_data.T[1])
     # plt.show()

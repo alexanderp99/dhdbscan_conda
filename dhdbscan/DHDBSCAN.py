@@ -390,7 +390,6 @@ class DHDBSCAN:
         return dict(zip(unique_items, counts))
 
     def fit_mst(self, X):
-
         self.minimum_spanning_tree = X
 
         self.single_linkage_tree = self.label(self.minimum_spanning_tree)
@@ -420,7 +419,11 @@ class DHDBSCAN:
         minimum_spanning_tree = self.mst_linkage_core(self.mutual_reachability)
         self.minimum_spanning_tree = minimum_spanning_tree[np.argsort(minimum_spanning_tree.T[2]), :] #sorted ascending
         clusters = run_dhdbscan_from_mst(self.minimum_spanning_tree)
-        return clusters
+        self.labels_ = np.full(len(X), -1)
+        for idx, each_cluster in enumerate(clusters):
+            for each_value in each_cluster.values:
+                self.labels_[each_value] = idx
+        return self
 
         
     def fit(self, X, y=None):
@@ -621,4 +624,3 @@ class DHDBSCAN:
 
 
     #3,5,6,
-    #

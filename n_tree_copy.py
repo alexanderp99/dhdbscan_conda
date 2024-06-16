@@ -21,12 +21,12 @@ class Node:
 
 class Cluster:
     def __init__(self):
-        self.children = [] #actual children clusters
+        self.children = []
         self.label = None
         self.parent = None
         self._delta_creation = 0
         self._delta_end = 0
-        self.values = [] #numerical values of datapoints
+        self.values = []
         self._stability = 0
         self.is_selected = False
 
@@ -133,40 +133,27 @@ class Tree:
                     second_value = U.find(int(each_row[1]))
 
                     #if U2.find(first_value) != first_value or U2.find(second_value) != second_value:
-                    U2.union(first_value, second_value)
 
+
+                    U2.union(first_value, second_value)
                     pos = U2.find(first_value)
                     if pos not in di:
                         di[pos] = []
-                        #arr = np.array([U.find(int(each_row[0])), U.find(int(each_row[1]))])
-                        #di[pos].append(arr)
                         di[pos].append(each_row[:2])
                     else:
-                        #arr = np.array([U.find(int(each_row[0])), U.find(int(each_row[1]))])
-                        #di[pos].append(arr)
                         di[pos].append(each_row[:2])
 
 
 
+                for each_ntree in di.values():
 
-                for each_nitem in di.items():
+                    unique_elements, unique_counts = np.unique(np.array(each_ntree).flatten(),return_counts=True)
 
-                    each_ntree = each_nitem[1] #value of dict
-                    cluster_tree_value = each_nitem[0] # key of dict
-
-                    #unique_elements, unique_counts = np.unique(np.array(each_ntree).flatten(),return_counts=True)
-
-                    # find duplicate elements, to which the groups are merged
-                    """if len(each_ntree) == 1:
-                        duplicate_element = int(each_ntree[0][0])# choose first duplicate
-                    elif len(np.unique(np.array(each_ntree).flatten())) == len(each_ntree)*2:
-                        duplicate_element = int(each_ntree[0][0])
-                    else:
-                        duplicate_element = int(unique_elements[unique_counts > 1][0])  #"""
-                    duplicate_element = cluster_tree_value
+                    # next check
+                    duplicate_element = int(unique_elements[unique_counts > 1][0])# choose first duplicate
 
                     unique_elements = np.unique(np.array(each_ntree).flatten()).astype(int)
-                    union_find_results = np.unique([U.find(each_element) for each_element in unique_elements])
+                    union_find_results = [U.find(each_element) for each_element in unique_elements]
                     union_find_sizes = [U.size[each_element] for each_element in union_find_results]
 
 
@@ -174,16 +161,103 @@ class Tree:
 
                     for each_union_find_result in union_find_results:
                         new_node.add_child(nodes[each_union_find_result])
-
-                    for each_union_find_result in union_find_results:
                         nodes[each_union_find_result] = new_node
-
-                    for each_union_find_result in union_find_results:
                         U.union(duplicate_element, each_union_find_result)
                     # After the union, the new_node represents the union of aa and bb
                     last_node_idx = U.find(duplicate_element)
 
                     index += len(each_ntree)
+
+                """
+                index_items = np.array(group2)[:, :2].flatten()
+                items_have_shared_components = (len(np.unique(index_items)) != len(index_items))
+                unique_elements, unique_counts = np.unique(index_items, return_counts=True)
+
+                # next check
+                duplicate_element = unique_elements[unique_counts > 1]
+                non_duplicate_elements = unique_elements[unique_counts == 1]
+                if len(duplicate_element) > 1:
+                    print("exeption. Can not handle multiple duplicates")
+                # duplicate_element = int(duplicate_element)
+
+                union_find_values = []
+                all_non_duplicates_not_in_same_cluster = True
+                for each_value in unique_elements:
+                    union_find_value = U.find(int(each_value))
+                    u_size = U.size[union_find_value]
+                    if u_size == 1:
+                        all_non_duplicates_not_in_same_cluster = False
+                    else:
+                        union_find_values.append(each_value)"""
+
+                if not items_have_shared_components and all_non_duplicates_not_in_same_cluster:
+                    for item in group2:
+                        a = int(item[0])
+                        b = int(item[1])
+                        delta = item[2]
+
+                        aa = U.find(a)
+                        bb = U.find(b)
+
+                        new_node = Node(-1, distance=delta, size=U.size[aa] + U.size[bb])  # Create a new internal node
+                        new_node.add_child(nodes[aa])
+                        new_node.add_child(nodes[bb])
+
+                        nodes[aa] = new_node
+                        nodes[bb] = new_node
+
+                        U.union(aa, bb)
+                        # After the union, the new_node represents the union of aa and bb
+                        last_node_idx = U.find(aa)
+
+                        index += 1
+                else:
+                    # print("attention, we have a conflict")
+
+                    if len(union_find_values) >= 1:
+                        # items have not shared components (thus all 4 unique), but they all belong to the same cluster
+                        pass
+
+                    first_merge_num_childs = None  # This guarantees, that other connected components that connect to the same component on the same level, have the same number of children (split condition)
+
+                    # I am ussuming the third unique point is in relation with the douplicate point.
+
+                    a = int(unique_elements[0])
+                    b = int(unique_elements[1])
+                    c = int(unique_elements[2])
+                    delta = group2[0][2]
+
+                    aa = U.find(a)
+                    bb = U.find(b)
+                    cc = U.find(c)
+
+                    """if first_merge_num_childs is None:
+                        first_merge_num_childs = U.size[aa] + U.size[bb]
+                    result_arr[index, 3] = first_merge_num_childs
+                    U.union(aa, bb)
+
+                    index += 1
+                    """
+
+                    # new_node = Node(-1, distance=delta, size=U.size[aa] + U.size[bb] + 1)  # +1 for C Node
+                    new_node = Node(-1, distance=delta,
+                                    size=U.size[aa] + U.size[bb] + U.size[cc])  # Root node was all children
+
+                    new_node.add_child(nodes[aa])
+                    new_node.add_child(nodes[bb])
+                    new_node.add_child(nodes[cc])
+
+                    nodes[aa] = new_node
+                    nodes[bb] = new_node
+                    nodes[cc] = new_node
+
+                    U.union(aa, bb)
+                    U.union(aa, cc)
+
+                    # After the union, the new_node represents the union of aa and bb
+                    last_node_idx = U.find(aa)
+
+                    index += 2  # 2 iterations simulated
 
             else:
                 for item in group2:
@@ -206,7 +280,6 @@ class Tree:
                     last_node_idx = U.find(aa)
 
                     index += 1
-
 
         root = nodes[last_node_idx]
 
@@ -251,6 +324,19 @@ class Tree:
                     self.condense_tree(child_node, label)
         return label
 
+    def extract_stable_clusters(self, root_node):
+
+        # Setting the cluster leaf delta
+        def dfs(node):
+
+            if all(child.value >= 0 for child in node.children) and len(node.children) == 2:
+                node.stability = 1
+            else:
+                for each_child_node in node.children:
+                    dfs(each_child_node)
+
+        dfs(root_node)
+
     def calculate_clusters(self, node):
 
         root_cluster = Cluster()
@@ -290,18 +376,15 @@ class Tree:
                 for each_child_node in node.children:
                     dfs(each_child_node)
                 stabilities = []
-                for each_child_node in node.children:
-                    stabilities.append(each_child_node.stability)
-
-                if root_cluster.parent is None:
-                    return # we are not allowed to set the 'root' cluster to a cluster, because then only a single cluster would exist
+                if node.children[0].is_selected:  #
+                    for each_child_node in node.children:
+                        stabilities.append(each_child_node.stability)
+                if np.sum(stabilities) > node.stability:
+                    node.stability = np.sum(stabilities)  # Parent stabilites set to child stabilities
                 else:
-                    if np.sum(stabilities) > node.stability:
-                        node.stability = np.sum(stabilities)  # Parent stabilites set to child stabilities
-                    else:
-                        node.is_selected = True
-                        for each_child_node in node.children:
-                            each_child_node.is_selected = False
+                    node.is_selected = True
+                    for each_child_node in node.children:
+                        each_child_node.is_selected = False
 
         dfs(root_cluster)
         return
@@ -359,6 +442,7 @@ def run_dhdbscan_from_mst(mst):
         tree.print_tree(node)
         print("\n\n\n")
     tree.condense_tree(node)
+    # tree.extract_stable_clusters(node)
     if do_printing:
         tree.print_tree(node)
         print("\n\n\n")
@@ -369,8 +453,7 @@ def run_dhdbscan_from_mst(mst):
     tree.calculate_stabilities(cluster)
     if do_printing:
         tree.print_cluster_tree(cluster)
-        print("\n\n\n")
     cluster_list = tree.extractClusters(cluster)
     if do_printing:
-        print("Cluster list:", cluster_list)
+        print(cluster_list)
     return cluster_list
