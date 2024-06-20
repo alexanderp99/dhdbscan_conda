@@ -1,6 +1,8 @@
 from collections import defaultdict
 
 import numpy as np
+
+from dhdbscan.DHDBSCAN import DHDBSCAN
 from hdbscan import HDBSCAN
 import matplotlib.pyplot as plt
 from dhdbscan.HDBSCAN import HDBSCAN as MyHdbscan
@@ -18,6 +20,27 @@ def check_identical_arrays(arrays):
 """
 Checks if shuffeling a distance matrix leads to different labels. The distance matrix has points with same distance.
 """
+
+def check_identical_labels(arrays):
+    first_array = arrays[0]
+
+    equal = False
+
+    for each_array in arrays[1:]:
+        unique1 = np.unique(first_array)
+        unique2 = np.unique(each_array)
+
+        if len(unique1) != len(unique2):
+            equal = False
+            break
+        else:
+            mapping = {u1: u2 for u1, u2 in zip(unique1, unique2)}
+            mapped_array1 = np.vectorize(mapping.get)(first_array)
+            equal = np.array_equal(mapped_array1, each_array)
+            if not equal:
+                print(f"Not equal: {mapped_array1, each_array}")
+
+    return equal
 
 def generate_n_simplex_with_radius(n, starting_point, radius):
     # Lambda function to generate initial n-simplex vertices
@@ -59,28 +82,34 @@ for dataset_name, each_datadict in datasets.items():
     each_dataset = each_datadict['dataset']
     min_cluster_size = each_datadict['min_cluster_size']
 
+    clusterer = DHDBSCAN(min_points=min_cluster_size)
+    # clusterer = MyHdbscan(min_points=min_cluster_size)
+    # clusterer.fit_hdbscan_distance_matrix(shuffled_data)
+    # clusterer.fit_hdbscan(shuffled_data)
+    clusterer.fit_dhdbscan(each_dataset)
+    #shuffle_corrected_labels.append(clusterer.labels_)
+
     for i in range(5):
         shuffled_indices = np.random.permutation(len(each_dataset))
         #shuffled_indices = np.arange(len(each_dataset))
         shuffled_data = each_dataset.copy()  # Make a copy to preserve the original dataset
         shuffled_data = shuffled_data[shuffled_indices]
 
-        """clusterer = HDBSCAN(min_cluster_size=min_cluster_size, prediction_data=True, approx_min_span_tree=False,
-                        gen_min_span_tree=True, algorithm="generic", metric="euclidean")"""
-        clusterer = MyHdbscan(min_points=min_cluster_size)
+        clusterer = DHDBSCAN(min_points=min_cluster_size)
         #clusterer.fit_hdbscan_distance_matrix(shuffled_data)
-        clusterer.fit_hdbscan(shuffled_data)
-        #clusterer.fit(shuffled_data)
-
-
+        clusterer.fit_dhdbscan(shuffled_data)
 
         """clusterer.condensed_tree_.plot(select_clusters=True)
         plt.title("Hdbscan condensed tree")
         plt.show()"""
 
         labels = clusterer.labels_[shuffled_indices]
-        #probabilities = clusterer.probabilities_
-        probabilities = clusterer.probabilities
+
+        cop = np.copy(clusterer.labels_)
+        cop[shuffled_indices] = clusterer.labels_
+        shuffle_corrected_labels.append(cop)
+
+        labels = cop
 
         """num_colors = len(set(labels))
         palette = plt.cm.viridis(np.linspace(0, 1, num_colors))
@@ -101,7 +130,7 @@ for dataset_name, each_datadict in datasets.items():
         label_count_ndarray = np.array([item[1] for item in sorted(label_counts.items())])
 
         label_dicts.append(label_count_ndarray)
-        shuffle_corrected_labels.append(labelz)
 
-#print("All labels are equal:", check_identical_arrays(shuffle_corrected_labels))
-print("All label counts are equal", check_identical_arrays(label_dicts))
+
+print("All labels are equal:", check_identical_labels(shuffle_corrected_labels))
+
