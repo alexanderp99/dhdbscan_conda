@@ -79,9 +79,11 @@ class HDBSCAN:
                                                                  self.alpha)
         self.mutual_reachability = self.make_symmetric(self.mutual_reachability)
 
+        self.mutual_reachability = np.round(self.mutual_reachability,decimals=6)
 
         self.minimum_spanning_tree = mst_linkage_core(self.mutual_reachability)
         self.minimum_spanning_tree = self.minimum_spanning_tree[np.argsort(self.minimum_spanning_tree.T[2]), :] # sorting is required! Otherwise trash results
+        self.minimum_spanning_tree.T[2] = self.minimum_spanning_tree.T[2].round(decimals=2)
 
         self.single_linkage_tree = label(self.minimum_spanning_tree)
 

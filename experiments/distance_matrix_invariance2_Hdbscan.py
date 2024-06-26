@@ -67,7 +67,10 @@ n = 2  # Dimension of the simplex (n-simplex in n+1 dimensions)
 #datapoints = [generate_n_simplex_with_starting_point(n, np.array([0, 0, 0])),generate_n_simplex_with_starting_point(n, np.array([-5, 0, 0])),generate_n_simplex_with_starting_point(n, np.array([5, 0, 0]))]
 datapoints = np.vstack([generate_n_simplex_with_radius(n, np.array([0, 0]),1),generate_n_simplex_with_radius(n, np.array([-5,-5]),3),generate_n_simplex_with_radius(n, np.array([5,5]),2)])
 datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[28.25,-16],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
-datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
+#datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
+#corrected
+datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[28.25,-16.0281],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
+
 
 
 datasets = {
@@ -90,7 +93,7 @@ for dataset_name, each_datadict in datasets.items():
     clusterer.fit(each_dataset)
     #shuffle_corrected_labels.append(clusterer.labels_)
 
-    for i in range(5):
+    for i in range(20):
         shuffled_indices = np.random.permutation(len(each_dataset))
         #shuffled_indices = np.arange(len(each_dataset))
         shuffled_data = each_dataset.copy()  # Make a copy to preserve the original dataset
@@ -103,9 +106,13 @@ for dataset_name, each_datadict in datasets.items():
         #clusterer.fit_hdbscan(shuffled_data)
         clusterer.fit(shuffled_data)
 
-        """clusterer.condensed_tree_.plot(select_clusters=True)
-        plt.title("Hdbscan condensed tree")
+        """clusterer.minimum_spanning_tree_.plot()
+        plt.title("mst")
         plt.show()"""
+
+        clusterer.single_linkage_tree_.plot()
+        plt.title("Hdbscan condensed tree")
+        plt.show()
 
         labels = clusterer.labels_[shuffled_indices]
         probabilities = clusterer.probabilities_
@@ -123,9 +130,13 @@ for dataset_name, each_datadict in datasets.items():
         plt.title("Hdbscan scatterplot matplotlib")
         plt.show()
 
-        clusterer.single_linkage_tree_.plot(cmap='viridis', colorbar=True)
+        """clusterer.single_linkage_tree_.plot(cmap='viridis', colorbar=True)
         plt.title("Hdbscan single linkage tree")
-        plt.show()
+        plt.show()"""
+
+        """clusterer.condensed_tree_.plot(select_clusters=False)
+        plt.title("Hdbscan condensed tree")
+        plt.show()"""
 
         if not np.array_equal(shuffled_data, each_dataset[shuffled_indices]):
             raise Exception("Relabeled rows are not identical")

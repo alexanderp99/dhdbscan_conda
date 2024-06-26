@@ -1,8 +1,6 @@
 from collections import defaultdict
 
 import numpy as np
-
-from dhdbscan.DHDBSCAN import DHDBSCAN
 from hdbscan import HDBSCAN
 import matplotlib.pyplot as plt
 from dhdbscan.HDBSCAN import HDBSCAN as MyHdbscan
@@ -70,6 +68,23 @@ n = 2  # Dimension of the simplex (n-simplex in n+1 dimensions)
 datapoints = np.vstack([generate_n_simplex_with_radius(n, np.array([0, 0]),1),generate_n_simplex_with_radius(n, np.array([-5,-5]),3),generate_n_simplex_with_radius(n, np.array([5,5]),2)])
 datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[28.25,-16],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
 #datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
+#corrected
+datapoints = np.array([[-0.5,0],[0.5,0],[0,np.sqrt(3)/2],[19,0],[20,0],[19.5,np.sqrt(3)/2],[9.75,-18.5*np.sqrt(3)/2],[28.25,-16.02],[-15,-40],[-10,-40],[-15,-35],[-10,-35]])
+"""datapoints = np.array([
+[1., 1., 1., 19.5, 20.5, 20.01874122, 19.0197266, 32.9159914, 42.5470328, 41.11265012, 37.88469348, 36.26637561],
+[1., 1., 1., 18.5, 19.5, 19.0197266, 18.5, 32.04625547, 42.89813516, 41.35516896, 38.27858409, 36.54107278],
+[1., 1., 1., 19.0197266, 20.01874122, 19.5, 19.5, 32.91616583, 43.53196564, 42.07174862, 38.87636529, 37.23401373],
+[19.5, 18.5, 19.0197266, 1., 1., 1., 18.5, 18.50574207, 52.49761899, 49.40647731, 48.7954916, 45.45327271],
+[20.5, 19.5, 20.01874122, 1., 1., 1., 19.0197266, 18.50000119, 53.15072906, 50., 49.49747468, 46.09772229],
+[20.01874122, 19.0197266, 19.5, 1., 1., 1., 19.5, 19.02561361, 53.48160462, 50.40121062, 49.76566867, 46.43944205],
+[19.0197266, 18.5, 19.5, 18.5, 19.0197266, 19.5, 18.5, 18.5, 34.46059202, 31.06497066, 31.18889389, 27.39063895],
+[32.9159914, 32.04625547, 32.91616583, 18.5, 18.5, 19.02561361, 18.5, 18.5, 49.4491101, 45.14105105, 47.22812181, 42.69655126],
+[42.5470328, 42.89813516, 43.53196564, 52.49761899, 53.15072906, 53.48160462, 34.46059202, 49.4491101, 5., 5., 5., 7.07106781],
+[41.11265012, 41.35516896, 42.07174862, 49.40647731, 50., 50.40121062, 31.06497066, 45.14105105, 5., 5., 7.07106781, 5.],
+[37.88469348, 38.27858409, 38.87636529, 48.7954916, 49.49747468, 49.76566867, 31.18889389, 47.22812181, 5., 7.07106781, 5., 5.],
+[36.26637561, 36.54107278, 37.23401373, 45.45327271, 46.09772229, 46.43944205, 27.39063895, 42.69655126, 7.07106781, 5., 5., 5.]]
+)"""
+
 
 datasets = {
     'dataset1': {'dataset': datapoints, 'min_cluster_size': 2}
@@ -83,28 +98,36 @@ for dataset_name, each_datadict in datasets.items():
     each_dataset = each_datadict['dataset']
     min_cluster_size = each_datadict['min_cluster_size']
 
-    clusterer = DHDBSCAN(min_points=min_cluster_size)
+
     # clusterer = MyHdbscan(min_points=min_cluster_size)
     # clusterer.fit_hdbscan_distance_matrix(shuffled_data)
     # clusterer.fit_hdbscan(shuffled_data)
-    clusterer.fit_dhdbscan(each_dataset)
     #shuffle_corrected_labels.append(clusterer.labels_)
 
-    for i in range(1):
+    for i in range(20):
         shuffled_indices = np.random.permutation(len(each_dataset))
         #shuffled_indices = np.arange(len(each_dataset))
         shuffled_data = each_dataset.copy()  # Make a copy to preserve the original dataset
         shuffled_data = shuffled_data[shuffled_indices]
 
-        clusterer = DHDBSCAN(min_points=min_cluster_size)
+        """clusterer = HDBSCAN(min_cluster_size=min_cluster_size, prediction_data=True, approx_min_span_tree=False,
+                        gen_min_span_tree=True, algorithm="generic", metric="euclidean")"""
+        clusterer = MyHdbscan(min_points=min_cluster_size)
+        clusterer.fit_hdbscan(shuffled_data)
         #clusterer.fit_hdbscan_distance_matrix(shuffled_data)
-        clusterer.fit_dhdbscan(shuffled_data)
+        #clusterer.fit_hdbscan(shuffled_data)
+        #clusterer.fit(shuffled_data)
 
-        """clusterer.condensed_tree_.plot(select_clusters=True)
+        """clusterer.minimum_spanning_tree_.plot()
+        plt.title("mst")
+        plt.show()"""
+
+        """clusterer.single_linkage_tree_.plot()
         plt.title("Hdbscan condensed tree")
         plt.show()"""
 
         labels = clusterer.labels_[shuffled_indices]
+        probabilities = clusterer.probabilities
 
         cop = np.copy(clusterer.labels_)
         cop[shuffled_indices] = clusterer.labels_
@@ -116,8 +139,16 @@ for dataset_name, each_datadict in datasets.items():
         palette = plt.cm.viridis(np.linspace(0, 1, num_colors))
         cluster_colors = [palette[col] if col >= 0 else (0.5, 0.5, 0.5) for col in labels]
         plt.scatter(each_dataset.T[0], each_dataset.T[1], c=cluster_colors)
-        plt.title("DHdbscan scatterplot matplotlib")
+        plt.title("Hdbscan scatterplot matplotlib")
         plt.show()
+
+        """clusterer.single_linkage_tree_.plot(cmap='viridis', colorbar=True)
+        plt.title("Hdbscan single linkage tree")
+        plt.show()"""
+
+        """clusterer.condensed_tree_.plot(select_clusters=False)
+        plt.title("Hdbscan condensed tree")
+        plt.show()"""
 
         if not np.array_equal(shuffled_data, each_dataset[shuffled_indices]):
             raise Exception("Relabeled rows are not identical")
