@@ -35,9 +35,9 @@ datasets = create_datasets(data_generators)
 
 # Define boolean variables to control plotting
 plot_minimum_spanning_tree = True
-plot_single_linkage_tree = True
-plot_condensed_tree = True
-plot_selected_clusters = True
+plot_single_linkage_tree = False
+plot_condensed_tree = False
+plot_selected_clusters = False
 plot_cluster_scatter_matplotlib = True
 plot_cluster_scatter_sns = False
 plot_dhdbscan_scatter = True
